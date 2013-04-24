@@ -5,11 +5,11 @@ import socket
 import subprocess
 import time
 from collections import defaultdict
-from urlparse import urlparse, ParseResult
+from urllib.parse import urlparse, ParseResult
 from optparse import OptionParser
 
 DEFAULT_IMCS_PORT = 3589
-VERBOSE = False
+VERBOSE = True
 VERSION = "0.3.2"
 
 imcsVersion = None
@@ -29,7 +29,7 @@ class ExpectedCodeError(ProtocolError):
     def __init__(self, codes, expected, resp, explain=None):
         explain = explain or "expected codes: %s" % expected
         ProtocolError.__init__(self, resp, explain)
-        self.code = code
+        self.codes = codes
         self.expected = expected
 
 class InvalidServerError(Exception): pass
@@ -64,7 +64,7 @@ def log(section, text, verbose=False, line_prefix=""):
     if not verbose or VERBOSE:
         section_prefix = ("[%s] " % section) + line_prefix
         text = text.strip().replace("\n", "\n"+section_prefix)
-        print section_prefix + text
+        print(section_prefix + text)
         
 def logger(section):
     def do_log(text, verbose=False, line_prefix=""):
@@ -105,7 +105,7 @@ class CodedConversation(object):
         if code in codes:
             return code, msg, resp
         else:
-            raise ExpectedCodeError(codes, expected, resp)
+            raise ExpectedCodeError(codes, codes, resp)
 
     def receive_until(self, *codes):
         lines = ""
@@ -329,7 +329,7 @@ def play_imcs_url(color, urlstr):
         return server.offer(servercolor)
     elif url.path=="/accept" or url.path=="/":
         query = dict(pair.split("=") if not pair.startswith("rating") else ("rating",pair)
-                     for pair in filter(None, url.query.split("&")))
+                     for pair in [_f for _f in url.query.split("&") if _f])
         if "id" in query:
             return server.accept(query["id"], servercolor)
         else:
@@ -374,7 +374,7 @@ def game_loop(white_player, black_player, strict=False):
         move = players[current].get_move("%s to move." % current)
         
         if not move:
-            print "Unable to fetch move. Quitting."
+            print("Unable to fetch move. Quitting.")
             return
         
         if move.startswith("="):
@@ -385,14 +385,14 @@ def game_loop(white_player, black_player, strict=False):
                 opp_result_raw = players[current.invert].get_result()
                 opp_result = parse_game_result(opp_result_raw)
                 if cur_result != opp_result:
-                    print "Warning! Player game end states do not agree"
-                    print "\t%s: %s" % (current, repr(cur_result_raw))
-                    print "\t%s: %s" % (current.invert, repr(opp_result_raw))
+                    print("Warning! Player game end states do not agree")
+                    print("\t%s: %s" % (current, repr(cur_result_raw)))
+                    print("\t%s: %s" % (current.invert, repr(opp_result_raw)))
             
             if cur_result is not None:
-                print "%s wins." % cur_result
+                print("%s wins." % cur_result)
             else:
-                print "The game is a draw."
+                print("The game is a draw.")
             return cur_result
         
         log("Game", "Sending move \"%s\" to %s" % (move, current.invert.name.lower()))
@@ -434,7 +434,7 @@ def main():
     
     if options.help:
         parser.print_help()
-        print player_help
+        print(player_help)
         return
     
     if len(args) != 2:
@@ -449,10 +449,10 @@ def main():
             if phase == 1:
                 try:
                     return play_imcs_url(color, text)
-                except InvalidURLError, e:
+                except InvalidURLError as e:
                     parser.error("invalid imcs url: %s" % e)
                 except GameNotFoundError:
-                    print "Unable to find a suitable offer."
+                    print("Unable to find a suitable offer.")
                 sys.exit()
             return None
         
@@ -473,7 +473,7 @@ def main():
     durations = []
     for trial in range(1, options.trials+1):
         if options.trials > 1:
-            print "--- Beginning trial #%s ---" % trial
+            print("--- Beginning trial #%s ---" % trial)
             
         start_time = time.time()
         black_player = None
@@ -494,20 +494,20 @@ def main():
         for result in results:
             scores[result] += 1
         
-        print
-        print "--- Trial results ---"
+        print()
+        print("--- Trial results ---")
         ftrials = float(options.trials)
-        print "Totals:"
-        print "    White: %s\t(%.2f%%)" % (scores[WHITE], 100*scores[WHITE]/ftrials)
-        print "    Black: %s\t(%.2f%%)" % (scores[BLACK], 100*scores[BLACK]/ftrials)
-        print "    Draw:  %s\t(%.2f%%)" % (scores[None],  100*scores[None]/ftrials)
-        print
-        print "Average game time: %.02fs" % (sum(durations)/ftrials)
-        print
-        print "Detailed results:"
+        print("Totals:")
+        print("    White: %s\t(%.2f%%)" % (scores[WHITE], 100*scores[WHITE]/ftrials))
+        print("    Black: %s\t(%.2f%%)" % (scores[BLACK], 100*scores[BLACK]/ftrials))
+        print("    Draw:  %s\t(%.2f%%)" % (scores[None],  100*scores[None]/ftrials))
+        print()
+        print("Average game time: %.02fs" % (sum(durations)/ftrials))
+        print()
+        print("Detailed results:")
         
         for trial, (result, duration) in enumerate(zip(results, durations)):
-            print "    Trial #%s: %s\t(%.02fs)" % (trial+1, "Draw" if result is None else result.name, duration)
+            print("    Trial #%s: %s\t(%.02fs)" % (trial+1, "Draw" if result is None else result.name, duration))
 
 if __name__ == "__main__":
     main()
