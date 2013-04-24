@@ -26,8 +26,8 @@ class ProtocolError(Exception):
             return repr(self.resp)
 
 class ExpectedCodeError(ProtocolError):
-    def __init__(self, codes, expected, resp, explain=None):
-        explain = explain or "expected codes: %s" % expected
+    def __init__(self, code, expected, resp, explain=None):
+        explain = explain or "expected codes: %s" % str(expected)
         ProtocolError.__init__(self, resp, explain)
         self.code = code
         self.expected = expected
@@ -105,7 +105,7 @@ class CodedConversation(object):
         if code in codes:
             return code, msg, resp
         else:
-            raise ExpectedCodeError(codes, expected, resp)
+            raise ExpectedCodeError(code, codes, resp)
 
     def receive_until(self, *codes):
         lines = ""
